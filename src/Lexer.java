@@ -1,3 +1,5 @@
+import java.io.IOException;
+
 public class Lexer
 {
     private static final char EOF        =  0;
@@ -6,25 +8,49 @@ public class Lexer
     private java.io.Reader reader;   // input stream
     public int             lineno;   // line number
     public int             column;   // column
+    private char[]         inputBuffer; // buffer to store file content
+    private int            currentIndex; // current index in the buffer
 
     public Lexer(java.io.Reader reader, Parser yyparser) throws Exception
     {
         this.reader   = reader;
         this.yyparser = yyparser;
-        lineno = -123;
-        column = -456;
+        lineno = 1;
+        column = 0;
+        inputBuffer = readInput(reader);
+        currentIndex = 0;
+    }
+
+    private char[] readInput(java.io.Reader reader) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+        int data;
+        while ((data = reader.read()) != -1)
+        {
+            sb.append((char) data);
+        }
+        return sb.toString().toCharArray();
     }
 
     public char NextChar() throws Exception
     {
-        // http://tutorials.jenkov.com/java-io/readers-writers.html
-        int data = reader.read();
-        if(data == -1)
+        if (currentIndex >= inputBuffer.length)
         {
             return EOF;
         }
-        return (char)data;
+        char c = inputBuffer[currentIndex++];
+        if (c == '\n')
+        {
+            lineno++;
+            column = 1;
+        }
+        else
+        {
+            column++;
+        }
+        return c;
     }
+
     public int Fail()
     {
         return -1;
