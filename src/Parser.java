@@ -22,6 +22,8 @@ public class Parser
     Lexer            lexer;     // lexer.yylex() returns token-name
     public ParserVal yylval;    // yylval contains token-attribute
 
+    String[] tokens = {"OP", "RELOP", "LPAREN","RPAREN","SEMI","COMMA","INT","NUM","ID","PRINT","IF","ELSE","WHILE","BEGIN","END","ASSIGN","VOID"};
+
     public Parser(java.io.Reader r, Compiler compiler) throws Exception
     {
         this.compiler = compiler;
@@ -42,7 +44,6 @@ public class Parser
         {
             int token = lexer.yylex();  // get next token-name
             Object attr = yylval.obj;   // get  its token-attribute
-            String tokenname = "SEMI";
 
             if(token == 0)
             {
@@ -56,6 +57,8 @@ public class Parser
                 System.out.println("Error! There is a lexical error at " + lexer.lineno + ":" + lexer.column + ".");
                 return -1;
             }
+
+            String tokenname = tokens[token - 10]; // get token-name from token-id
 
             System.out.println("<" + tokenname + ", token-attr:\"" + attr + "\", " + lexer.lineno + ":" + lexer.column + ">");
         }
