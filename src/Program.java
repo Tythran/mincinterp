@@ -3,12 +3,12 @@ public class Program {
     {
         java.io.Reader r;
 
-        r = new java.io.StringReader
-        ("int main()\n"
-        +"{\n"
-        +"    return 0;\n"
-        +"}\n"
-        );
+        // r = new java.io.StringReader
+        // ("int main()\n"
+        // +"{\n"
+        // +"    return 0;\n"
+        // +"}\n"
+        // );
         
         args = new String[] { "src/test1.minc" };
 
