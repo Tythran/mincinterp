@@ -10,7 +10,7 @@ public class Program {
         +"}\n"
         );
         
-        args = new String[] { "/Users/ty.muessig/Downloads/proj1-minic-tokenizer-startup/src/test1.minc" };
+        args = new String[] { "src/test1.minc" };
 
         if(args.length <= 0)
             return;
