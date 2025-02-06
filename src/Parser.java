@@ -10,7 +10,13 @@ public class Parser
     public static final int NUM        = 17;    // number
     public static final int ID         = 18;    // identifier
     public static final int PRINT      = 19;    // print
-    // add additinoal token types
+    public static final int IF         = 20;    // if
+    public static final int ELSE       = 21;    // else
+    public static final int WHILE      = 22;    // while
+    public static final int BEGIN     = 23;    // begin
+    public static final int END       = 24;    // end
+    public static final int ASSIGN    = 25;    // <-
+    public static final int VOID       = 26;    // void
 
     Compiler         compiler;
     Lexer            lexer;     // lexer.yylex() returns token-name
