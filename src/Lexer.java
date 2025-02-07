@@ -11,6 +11,7 @@ public class Lexer
     private char[]         inputBuffer; // buffer to store file content
     int forward = 0;                    // forward index
     int lexBegin = 0;                   // lexeme begin index
+    int columntracker = 1;                  // column tracker
 
     public Lexer(java.io.Reader reader, Parser yyparser) throws Exception
     {
@@ -39,6 +40,7 @@ public class Lexer
             return EOF;
         }
         char c = inputBuffer[forward++];
+        columntracker++;
         return c;
     }
 
@@ -48,8 +50,9 @@ public class Lexer
     }
 
     private void UngetChar() {
-        if (forward > 0) {
+        if (forward > 1) {
             forward--;
+            columntracker = columntracker - 2;
         }
     }
 
@@ -74,7 +77,8 @@ public class Lexer
             switch(state)
             {
                 case 0:
-                    if(forward > 1) {lexBegin = forward;}
+                    if(forward > 1) {column = columntracker - (forward - lexBegin) + 1; lexBegin = forward;}
+
                     c = NextChar();
                     if(c == ';') { state= 1; continue; }
                     if(c == ',') { state= 2; continue; }
@@ -89,9 +93,9 @@ public class Lexer
                     if(c == '<') { state= 11; continue; }
                     if(c == '>') { state= 12; continue; }
                     if(Character.isDigit(c)) { state= 16; continue; }
-                    if(c == ' ') { column++; state=0; continue; }
-                    if(c == '\n') {lineno++; column = 1; state=0; continue; }
-                    if(c == '\t' || c == '\r') { column++; state=0; continue; }
+                    if(c == ' ') { column++; columntracker++; state=0; continue; }
+                    if(c == '\n') {lineno++; column = 1; columntracker = 1; state=0; continue; }
+                    if(c == '\t' || c == '\r') { column++; columntracker++; state=0; continue; }
                     if(c == EOF) { state=9999; continue; }
                     return Fail();                                  // if Fail, return -1 (indicating lexical error)
                 case 1:
@@ -161,7 +165,7 @@ public class Lexer
                     if(Character.isDigit(c)) { state=17; continue; }
                     UngetChar();
                     yyparser.yylval = new ParserVal((Object)yytext()); // set token-attribute to yyparser.yylval
-                    if(c == '.') { UngetChar(); return Fail(); }
+                    if(c == '.') { UngetChar(); column = columntracker + (forward - lexBegin); return Fail(); }
                     return Parser.NUM;
                     
                 case 9999:
