@@ -9,7 +9,6 @@ public class Lexer
     public int             lineno;   // line number
     public int             column;   // column
     private char[]         inputBuffer; // buffer to store file content
-    private int            currentIndex; // current index in the buffer
     int forward = 0;                    // forward index
     int lexBegin = 0;                   // lexeme begin index
 
@@ -18,9 +17,8 @@ public class Lexer
         this.reader   = reader;
         this.yyparser = yyparser;
         lineno = 1;
-        column = 0;
+        column = 1;
         inputBuffer = readInput(reader);
-        currentIndex = 0;
     }
 
     private char[] readInput(java.io.Reader reader) throws IOException
@@ -36,32 +34,27 @@ public class Lexer
 
     public char NextChar() throws Exception
     {
-        if (currentIndex >= inputBuffer.length)
+        if (forward >= inputBuffer.length)
         {
             return EOF;
         }
-        char c = inputBuffer[currentIndex++];
-        switch (c) {
-            case '\n':
-                lineno++;
-                column = 0;
-                break;
-            case '\t':
-                column += 1;
-                break;
-            case '\r':
-                column += 1;
-                break;
-            default:
-                column += 1;
-                break;
-        }
+        char c = inputBuffer[forward++];
         return c;
     }
 
     public int Fail()
     {
         return -1;
+    }
+
+    private void UngetChar() {
+        if (forward > 0) {
+            forward--;
+        }
+    }
+
+    private String yytext() {
+        return new String(inputBuffer, lexBegin, forward - lexBegin);
     }
 
     // * If yylex reach to the end of file, return  0
@@ -76,15 +69,17 @@ public class Lexer
 
         while(true)
         {
+        
             char c;
             switch(state)
             {
                 case 0:
+                    if(forward > 1) {lexBegin = forward;}
                     c = NextChar();
-                    if(c == ';') { state=   1; continue; }
-                    if(c == ',') { state=   2; continue; }
-                    if(c == '(') { state=   3; continue; }
-                    if(c == ')') { state=   4; continue; }
+                    if(c == ';') { state= 1; continue; }
+                    if(c == ',') { state= 2; continue; }
+                    if(c == '(') { state= 3; continue; }
+                    if(c == ')') { state= 4; continue; }
                     if(c == '{') { state= 5; continue; }
                     if(c == '}') { state= 6; continue; }
                     if(c == '+') { state= 7; continue; }
@@ -93,9 +88,10 @@ public class Lexer
                     if(c == '/') { state= 10; continue; }
                     if(c == '<') { state= 11; continue; }
                     if(c == '>') { state= 12; continue; }
-                    if(c == ' ') { state=0; continue; }
-                    if(c == '\n') { state=0; continue; }
-                    if(c == '\t' || c == '\r') { state=0; continue; }
+                    if(Character.isDigit(c)) { state= 16; continue; }
+                    if(c == ' ') { column++; state=0; continue; }
+                    if(c == '\n') {lineno++; column = 1; state=0; continue; }
+                    if(c == '\t' || c == '\r') { column++; state=0; continue; }
                     if(c == EOF) { state=9999; continue; }
                     return Fail();                                  // if Fail, return -1 (indicating lexical error)
                 case 1:
@@ -152,6 +148,22 @@ public class Lexer
                 case 15:
                     yyparser.yylval = new ParserVal((Object)"<>");   // set token-attribute to yyparser.yylval
                     return Parser.RELOP; // return token-name
+                case 16:
+                    c = NextChar();
+                    if(Character.isDigit(c)) { state=16; continue; }
+                    if(c == '.') { state=17; continue; }
+                    UngetChar();
+                    yyparser.yylval = new ParserVal((Object)yytext()); // set token-attribute to yyparser.yylval
+                    return Parser.NUM; // return token-name for integer
+                case 17:
+                    c = NextChar();
+                    
+                    if(Character.isDigit(c)) { state=17; continue; }
+                    UngetChar();
+                    yyparser.yylval = new ParserVal((Object)yytext()); // set token-attribute to yyparser.yylval
+                    if(c == '.') { UngetChar(); return Fail(); }
+                    return Parser.NUM;
+                    
                 case 9999:
                     return EOF;                                     // return end-of-file symbol (EOF == 0)
             }
