@@ -3,15 +3,20 @@ import java.io.IOException;
 public class Lexer
 {
     private static final char EOF        =  0;
+    private static final int BUFFER_SIZE = 10;
 
     private Parser         yyparser; // parent parser object
     private java.io.Reader reader;   // input stream
     public int             lineno;   // line number
     public int             column;   // column
     private char[]         inputBuffer; // buffer to store file content
-    int forward = 0;                    // forward index
-    int lexBegin = 0;                   // lexeme begin index
-    int columntracker = 0;              // column tracker
+    private char[] buffer1 = new char[BUFFER_SIZE];
+    private char[] buffer2 = new char[BUFFER_SIZE];
+    private boolean usingBuffer1 = true;
+    private int forward = 0;
+    private int lexBegin = 0;
+    private int columntracker = 0;
+    private StringBuilder lexemeBuilder = new StringBuilder();
     String[] keywords = {"int", "print", "if", "else", "while", "void"};
 
     public Lexer(java.io.Reader reader, Parser yyparser) throws Exception
@@ -20,28 +25,45 @@ public class Lexer
         this.yyparser = yyparser;
         lineno = 1;
         column = 1;
-        inputBuffer = readInput(reader);
+        fillBuffers();
     }
 
-    private char[] readInput(java.io.Reader reader) throws IOException
-    {
-        StringBuilder sb = new StringBuilder();
-        int data;
-        while ((data = reader.read()) != -1)
-        {
-            sb.append((char) data);
+    private void fillBuffers() throws IOException {
+        int read1 = reader.read(buffer1, 0, BUFFER_SIZE);
+        int read2 = reader.read(buffer2, 0, BUFFER_SIZE);
+        if (read1 == -1) {
+            buffer1[0] = EOF;
+        } else if (read1 < BUFFER_SIZE) {
+            buffer1[read1] = EOF;
         }
-        return sb.toString().toCharArray();
+        if (read2 == -1) {
+            buffer2[0] = EOF;
+        } else if (read2 < BUFFER_SIZE) {
+            buffer2[read2] = EOF;
+        }
     }
 
-    public char NextChar() throws Exception
-    {
-        if (forward >= inputBuffer.length)
-        {
-            return EOF;
+    private char NextChar() throws IOException {
+        if (forward >= BUFFER_SIZE) {
+            usingBuffer1 = !usingBuffer1;
+            forward = 0;
+            if (!usingBuffer1) {
+                int read = reader.read(buffer1, 0, BUFFER_SIZE);
+                if (read == -1) {
+                    buffer1[0] = EOF;
+                } else if (read < BUFFER_SIZE) {
+                    buffer1[read] = EOF;
+                }
+            } else {
+                int read = reader.read(buffer2, 0, BUFFER_SIZE);
+                if (read < BUFFER_SIZE) buffer2[read] = EOF;
+            }
         }
-        char c = inputBuffer[forward++];
+        
+        char c = usingBuffer1 ? buffer1[forward] : buffer2[forward];
+        forward++;
         columntracker++;
+        lexemeBuilder.append(c);
         return c;
     }
 
@@ -51,14 +73,15 @@ public class Lexer
     }
 
     private void UngetChar() {
-        if (forward > 1) {
+        if (forward > 0) {
             forward--;
             columntracker--;
+            lexemeBuilder.setLength(lexemeBuilder.length() - 1);
         }
     }
 
     private String yytext() {
-        return new String(inputBuffer, lexBegin, forward - lexBegin);
+        return lexemeBuilder.toString();
     }
 
     // * If yylex reach to the end of file, return  0
@@ -78,8 +101,9 @@ public class Lexer
             switch(state)
             {
                 case 0:
-                    column = columntracker+1;
+                    column = columntracker + 1;
                     lexBegin = forward;
+                    lexemeBuilder.setLength(0);
 
                     c = NextChar();
                     if(c == ';') { state= 1; continue; }
@@ -168,11 +192,8 @@ public class Lexer
                     return Parser.NUM; // return token-name for integer
                 case 17:
                     c = NextChar();
-                    if(Character.isDigit(c)) { state=17; continue; }
-                    UngetChar();
-                    yyparser.yylval = new ParserVal((Object)yytext()); // set token-attribute to yyparser.yylval
-                    if(c == '.') {column = columntracker - (forward - lexBegin)+1; return Parser.NUM; }
-                    return Parser.NUM;
+                    if(!Character.isDigit(c)) { return Fail(); }
+                    if(Character.isDigit(c)) { state=21; continue; }
                 case 18:
                     // Has to handle [a-zA-Z][a-zA-Z0-9_]*
                     c = NextChar();
@@ -199,6 +220,7 @@ public class Lexer
                             }
                         }
                     }
+                    
 
                     yyparser.yylval = new ParserVal((Object)yytext()); // set token-attribute to yyparser.yylval
                     return Parser.ID; // return token-name
@@ -208,6 +230,12 @@ public class Lexer
                 case 20:
                     yyparser.yylval = new ParserVal((Object)"=");   // set token-attribute to yyparser.yylval
                     return Parser.RELOP; // return token-name
+                case 21:
+                    c = NextChar();
+                    if(Character.isDigit(c)) { state=21; continue; }
+                    UngetChar();
+                    yyparser.yylval = new ParserVal((Object)yytext()); // set token-attribute to yyparser.yylval
+                    return Parser.NUM;
                 case 9999:
                     return EOF;                                     // return end-of-file symbol (EOF == 0)
             }

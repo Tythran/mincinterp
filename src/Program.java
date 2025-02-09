@@ -10,7 +10,7 @@ public class Program {
         // +"}\n"
         // );
         
-        args = new String[] { "src/test0.minc" };
+       // args = new String[] { "src/test1.minc" };
 
         if(args.length <= 0)
             return;
