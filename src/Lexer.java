@@ -56,7 +56,11 @@ public class Lexer
                 }
             } else {
                 int read = reader.read(buffer2, 0, BUFFER_SIZE);
-                if (read < BUFFER_SIZE) buffer2[read] = EOF;
+            if (read == -1) {
+                buffer2[0] = EOF;
+            } else if (read < BUFFER_SIZE) {
+                buffer2[read] = EOF;
+            }
             }
         }
         
@@ -69,6 +73,7 @@ public class Lexer
 
     public int Fail()
     {
+        yyparser.yylval = new ParserVal((Object)yytext());
         return -1;
     }
 
